@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 export default function AttendanceTable() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedRows, setExpandedRows] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,6 +29,13 @@ export default function AttendanceTable() {
     fetchData();
   }, []);
 
+  const toggleExpand = (index) => {
+    setExpandedRows((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">
@@ -50,46 +58,53 @@ export default function AttendanceTable() {
             </thead>
             <tbody>
               {records.map((rec, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-b text-center">
-                    {index + 1}
-                  </td>
-                  <td className="px-4 py-2 border-b">{rec.userId}</td>
-                  <td
-                    className={`px-4 py-2 border-b font-medium ${
-                      rec.status === "Present"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {rec.status}
-                  </td>
-                  <td className="px-4 py-2 border-b text-gray-700">
-                    {new Date(rec.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 border-b text-gray-700">
-                    {rec.absentTimestamps && rec.absentTimestamps.length > 0 ? (
-                      <ul className="list-disc list-inside space-y-1">
-                        {rec.absentTimestamps.map((ts, i) => {
-                          const dateObj =
-                            typeof ts === "string"
-                              ? new Date(ts)
-                              : ts?.toDate?.();
-                          return (
-                            <li key={i}>
-                              {dateObj instanceof Date && !isNaN(dateObj)
-                                ? dateObj.toLocaleString()
-                                : "Invalid date"}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <span className="text-gray-400 italic">—</span>
-                    )}
-                  </td>
-                </tr>
+                <React.Fragment key={index}>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-2 border-b text-center">
+                      {index + 1}
+                    </td>
+                    <td className="px-4 py-2 border-b">{rec.userId}</td>
+                    <td
+                      className={`px-4 py-2 border-b font-medium ${
+                        rec.status === "Present"
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {rec.status}
+                    </td>
+                    <td className="px-4 py-2 border-b text-gray-700">
+                      {new Date(rec.timestamp).toLocaleString()}
+                    </td>
+                    <td
+                      className="px-4 py-2 border-b text-blue-600 cursor-pointer"
+                      onClick={() => toggleExpand(index)}
+                    >
+                      {rec.absentTimestamps?.length
+                        ? expandedRows[index]
+                          ? "Hide Times ▲"
+                          : "Show Times ▼"
+                        : "—"}
+                    </td>
+                  </tr>
+
+                  {expandedRows[index] && rec.absentTimestamps?.length > 0 && (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-4 py-2 border-b bg-gray-50 text-sm"
+                      >
+                        <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                          {rec.absentTimestamps.map((ts, i) => (
+                            <li key={i}>{new Date(ts).toLocaleString()}</li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
+
               {records.length === 0 && (
                 <tr>
                   <td
