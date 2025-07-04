@@ -37,12 +37,25 @@ export default function AttendanceTable() {
   };
 
   const groupByDate = (timestamps) => {
-    return timestamps.reduce((acc, ts) => {
-      const date = new Date(ts).toLocaleDateString();
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(new Date(ts).toLocaleTimeString());
-      return acc;
-    }, {});
+    const grouped = {};
+
+    timestamps.forEach((ts) => {
+      const dateObj = new Date(ts);
+      const date = dateObj.toLocaleDateString();
+      const time = dateObj.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(time);
+    });
+
+    // Sort the dates in descending order
+    return Object.entries(grouped).sort(
+      (a, b) => new Date(b[0]) - new Date(a[0])
+    );
   };
 
   return (
@@ -102,21 +115,26 @@ export default function AttendanceTable() {
                   {expandedRows[index] && rec.absentTimestamps?.length > 0 && (
                     <tr>
                       <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
-                        <div className="space-y-4">
-                          {Object.entries(
-                            groupByDate(rec.absentTimestamps)
-                          ).map(([date, times]) => (
-                            <div key={date}>
-                              <div className="font-semibold text-gray-700">
-                                {date}
+                        <div className="space-y-6">
+                          {groupByDate(rec.absentTimestamps).map(
+                            ([date, times], i) => (
+                              <div key={i}>
+                                <div className="font-semibold text-gray-700 mb-2">
+                                  {date}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {times.map((time, j) => (
+                                    <span
+                                      key={j}
+                                      className="bg-white border border-gray-300 text-gray-800 px-3 py-1 rounded shadow-sm"
+                                    >
+                                      {time}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
-                              <ul className="list-disc ml-5 text-gray-600">
-                                {times.map((time, i) => (
-                                  <li key={i}>{time}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ))}
+                            )
+                          )}
                         </div>
                       </td>
                     </tr>
