@@ -2,32 +2,44 @@ import React, { useEffect, useState } from "react";
 
 export default function AttendanceTable() {
   const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
+  const [company, setCompany] = useState(
+    () => localStorage.getItem("selectedCompany") || ""
+  );
+  const [lat, setLat] = useState("");
+  const [lon, setLon] = useState("");
+  const [alt, setAlt] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/attendance`, {
+  const fetchData = async (companyName) => {
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/attendance/${companyName}`,
+        {
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
           },
           credentials: "include",
-        });
+        }
+      );
 
-        if (!res.ok) throw new Error("Failed to fetch data");
-        const data = await res.json();
-        setRecords(data);
-      } catch (error) {
-        console.error("Fetch error:", error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (!res.ok) throw new Error("Failed to fetch data");
+      const data = await res.json();
+      setRecords(data);
+    } catch (error) {
+      console.error("Fetch error:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchData();
-  }, []);
+  useEffect(() => {
+    if (company) {
+      fetchData(company);
+    }
+  }, [company]);
 
   const toggleExpand = (index) => {
     setExpandedRows((prev) => ({
@@ -52,17 +64,118 @@ export default function AttendanceTable() {
       grouped[date].push(time);
     });
 
-    // Sort the dates in descending order
     return Object.entries(grouped).sort(
       (a, b) => new Date(b[0]) - new Date(a[0])
     );
   };
 
+  const handleCreateDashboard = async (e) => {
+    e.preventDefault();
+    if (!company || !lat || !lon) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/company`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          companyName: company.trim(),
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lon),
+          altitude: parseFloat(alt) || 0,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create company");
+
+      localStorage.setItem("selectedCompany", company.trim());
+      fetchData(company.trim());
+    } catch (error) {
+      console.error("Company creation failed:", error.message);
+    }
+  };
+
+  const clearCompany = () => {
+    localStorage.removeItem("selectedCompany");
+    setCompany("");
+    setLat("");
+    setLon("");
+    setAlt("");
+    setRecords([]);
+  };
+
   return (
     <div className="p-6">
       <h2 className="text-3xl font-bold mb-6 text-gray-800">
-        Attendance Records
+        Attendance Dashboard
       </h2>
+
+      {!localStorage.getItem("selectedCompany") ? (
+        <form
+          onSubmit={handleCreateDashboard}
+          className="bg-white shadow-md rounded p-6 mb-6 border border-gray-200 max-w-xl"
+        >
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <input
+              type="text"
+              placeholder="Company Name"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              className="border p-2 rounded"
+              required
+            />
+            <input
+              type="number"
+              step="any"
+              placeholder="Latitude"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              className="border p-2 rounded"
+              required
+            />
+            <input
+              type="number"
+              step="any"
+              placeholder="Longitude"
+              value={lon}
+              onChange={(e) => setLon(e.target.value)}
+              className="border p-2 rounded"
+              required
+            />
+            <input
+              type="number"
+              step="any"
+              placeholder="Altitude (optional)"
+              value={alt}
+              onChange={(e) => setAlt(e.target.value)}
+              className="border p-2 rounded"
+            />
+          </div>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Create Dashboard
+          </button>
+        </form>
+      ) : (
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold text-gray-700">
+            Viewing: <span className="text-blue-600">{company}</span>
+          </h3>
+          <button
+            onClick={clearCompany}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Switch Company
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-gray-600">Loading...</div>
